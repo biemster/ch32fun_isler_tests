@@ -13,5 +13,5 @@ make pingpong clean all monitor
 ```
 or for ch582 using USB ISP:
 ```bash
-make usb ch582 pingpong clean all
+./usb_ctrl.py -b && make pingpong usb ch582 clean all
 ```

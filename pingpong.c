@@ -38,9 +38,10 @@ int USBFS_SendEndpointNEW(int ep, uint8_t *data, int len, int copy) { return USB
 #define ROM_CFG_MAC_ADDR        ((const u32*)0x0007f018)
 #endif
 
-#define ACCESS_ADDRESS 0x63683332
-#define ISLER_CHANNEL  35
-#define ISLER_PHY_MODE PHY_1M
+#define ACCESS_ADDRESS_BCST 0x63683332
+#define ACCESS_ADDRESS_PRIV (*ROM_CFG_MAC_ADDR)
+#define ISLER_CHANNEL       35
+#define ISLER_PHY_MODE      PHY_1M
 __attribute__((aligned(4))) static uint8_t payload[] = "UUUUS[ch32fun iSLER ping pong]";
 
 #if !defined(FUNCONF_USE_DEBUGPRINTF) || !FUNCONF_USE_DEBUGPRINTF
@@ -92,8 +93,8 @@ void HandleDataOut(struct _USBState *ctx, int endp, uint8_t *data, int len) {
 		if(len == 1 && data[0] == 'p') {
 			// send first ping on access address from macro
 			blink(1);
-			iSLERTX(ACCESS_ADDRESS, (uint8_t*)payload, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);
-			iSLERRX(*ROM_CFG_MAC_ADDR, ISLER_CHANNEL, ISLER_PHY_MODE); // listen on private address for response
+			iSLERTX(ACCESS_ADDRESS_BCST, (uint8_t*)payload, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);
+			iSLERRX(ACCESS_ADDRESS_PRIV, ISLER_CHANNEL, ISLER_PHY_MODE); // listen on private address for response
 		}
 	}
 	else if (endp == EP_BULK_OUT) {
@@ -133,12 +134,15 @@ int HandleSetupCustom( struct _USBState *ctx, int setup_code ) {
 void isler_process_rx() {
 	uint8_t *frame = (uint8_t *)LLE_BUF;
 	if(frame[4] == sizeof(payload) -5) {
-		printf("Received frame from %08lx\n", *(uint32_t*)frame);
-		iSLERTX(*(uint32_t*)payload, payload, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);
-		iSLERRX(*ROM_CFG_MAC_ADDR, ISLER_CHANNEL, ISLER_PHY_MODE); // listen on private address for response
+		uint32_t uuid = *(uint32_t*)frame;
+		printf("Received frame from %08lx\r\n", uuid);
+		blink(1); // also for delay (33ms, after that 66ms/blink)
+		iSLERTX(uuid, payload, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);
+		iSLERRX(ACCESS_ADDRESS_PRIV, ISLER_CHANNEL, ISLER_PHY_MODE); // listen on private address for response
 	}
 	else {
-		iSLERRX(ACCESS_ADDRESS, ISLER_CHANNEL, ISLER_PHY_MODE); // continue listening on broadcast address
+		// BUG: we missed a ping so we should start listening on the broadcast channel again, BUT THIS DOES NOT WORK
+		iSLERRX(ACCESS_ADDRESS_PRIV/*_BCST*/, ISLER_CHANNEL, ISLER_PHY_MODE); // continue listening on broadcast address
 	}
 }
 
@@ -151,10 +155,10 @@ int main() {
 
 	USBFSSetup();
 
-	*(uint32_t*)payload = *ROM_CFG_MAC_ADDR;
+	*(uint32_t*)payload = ACCESS_ADDRESS_PRIV;
 	payload[4] = sizeof(payload) -5;
 	iSLERInit(LL_TX_POWER_0_DBM);
-	iSLERRX(ACCESS_ADDRESS, ISLER_CHANNEL, ISLER_PHY_MODE); // start listening on broadcast address
+	iSLERRX(ACCESS_ADDRESS_BCST, ISLER_CHANNEL, ISLER_PHY_MODE); // start listening on broadcast address
 
 	blink(5);
 	while(1) {
