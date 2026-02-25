@@ -38,11 +38,13 @@ int USBFS_SendEndpointNEW(int ep, uint8_t *data, int len, int copy) { return USB
 #define ROM_CFG_MAC_ADDR        ((const u32*)0x0007f018)
 #endif
 
+#define PONG_DELAY_MS       7
 #define ACCESS_ADDRESS_BCST 0x63683332
 #define ACCESS_ADDRESS_PRIV (*ROM_CFG_MAC_ADDR)
 #define ISLER_CHANNEL       35
 #define ISLER_PHY_MODE      PHY_1M
 __attribute__((aligned(4))) static uint8_t payload[] = "UUUUS[ch32fun iSLER ping pong]";
+static volatile int cnt;
 
 #if !defined(FUNCONF_USE_DEBUGPRINTF) || !FUNCONF_USE_DEBUGPRINTF
 int _write(int fd, const char *buf, int size) {
@@ -136,8 +138,8 @@ void isler_process_rx() {
 	uint32_t uuid = *(uint32_t*)frame;
 	uint8_t len = frame[4];
 	if(len == sizeof(payload) -5) {
-		printf("Received frame from %08lx\r\n", uuid);
-		blink(1); // also for delay (33ms, after that 66ms/blink)
+		cnt++;
+		Delay_Ms(PONG_DELAY_MS);
 		iSLERTX(uuid, payload, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);
 		iSLERRX(ACCESS_ADDRESS_PRIV, ISLER_CHANNEL, ISLER_PHY_MODE); // listen on private address for response
 	}
@@ -166,6 +168,7 @@ int main() {
 	iSLERRX(ACCESS_ADDRESS_BCST, ISLER_CHANNEL, ISLER_PHY_MODE); // start listening on broadcast address
 
 	blink(5);
+	uint32_t start = funSysTick32();
 	while(1) {
 #ifdef GLOBAL_RX_READY
 		if(rx_ready) {
@@ -173,5 +176,10 @@ int main() {
 			rx_ready = 0;
 		}
 #endif
+		if(cnt && !(cnt %100)) {
+			cnt++; // not really a count, but otherwise it get's stuck here. We're just ballparking anyway
+			printf("pingponged 100 times in %ld millis\r\n", (funSysTick32() - start) / Ticks_from_Ms(1));
+			start = funSysTick32();
+		}
 	}
 }
