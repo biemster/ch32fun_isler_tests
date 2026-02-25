@@ -133,16 +133,21 @@ int HandleSetupCustom( struct _USBState *ctx, int setup_code ) {
 
 void isler_process_rx() {
 	uint8_t *frame = (uint8_t *)LLE_BUF;
-	if(frame[4] == sizeof(payload) -5) {
-		uint32_t uuid = *(uint32_t*)frame;
+	uint32_t uuid = *(uint32_t*)frame;
+	uint8_t len = frame[4];
+	if(len == sizeof(payload) -5) {
 		printf("Received frame from %08lx\r\n", uuid);
 		blink(1); // also for delay (33ms, after that 66ms/blink)
 		iSLERTX(uuid, payload, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);
 		iSLERRX(ACCESS_ADDRESS_PRIV, ISLER_CHANNEL, ISLER_PHY_MODE); // listen on private address for response
 	}
+	else if(!len && uuid == 0) {
+		// noise after first TX, where does this come from? Probably best to keep listening on private access address
+		iSLERRX(ACCESS_ADDRESS_PRIV, ISLER_CHANNEL, ISLER_PHY_MODE); // listen on private address for response
+	}
 	else {
-		// BUG: we missed a ping so we should start listening on the broadcast channel again, BUT THIS DOES NOT WORK
-		iSLERRX(ACCESS_ADDRESS_PRIV/*_BCST*/, ISLER_CHANNEL, ISLER_PHY_MODE); // continue listening on broadcast address
+		// we missed a ping so we should start listening on the broadcast channel again.
+		iSLERRX(ACCESS_ADDRESS_BCST, ISLER_CHANNEL, ISLER_PHY_MODE); // continue listening on broadcast address
 	}
 }
 
