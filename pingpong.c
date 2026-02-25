@@ -38,11 +38,11 @@ int USBFS_SendEndpointNEW(int ep, uint8_t *data, int len, int copy) { return USB
 #define ROM_CFG_MAC_ADDR        ((const u32*)0x0007f018)
 #endif
 
-#define PONG_DELAY_MS       7
+#define PONG_DELAY_MS       8
 #define ACCESS_ADDRESS_BCST 0x63683332
 #define ACCESS_ADDRESS_PRIV (*ROM_CFG_MAC_ADDR)
 #define ISLER_CHANNEL       35
-#define ISLER_PHY_MODE      PHY_1M
+#define ISLER_PHY_MODE      PHY_2M
 __attribute__((aligned(4))) static uint8_t payload[] = "UUUUS[ch32fun iSLER ping pong]";
 static volatile int cnt;
 
