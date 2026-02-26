@@ -46,6 +46,15 @@ int USBFS_SendEndpointNEW(int ep, uint8_t *data, int len, int copy) { return USB
 __attribute__((aligned(4))) static uint8_t payload[] = "UUUUS[ch32fun iSLER ping pong]";
 static volatile int cnt;
 
+void blink(int n) {
+	for(int i = n-1; i >= 0; i--) {
+		funDigitalWrite( LED, FUN_LOW ); // Turn on LED
+		Delay_Ms(33);
+		funDigitalWrite( LED, FUN_HIGH ); // Turn off LED
+		if(i) Delay_Ms(33);
+	}
+}
+
 #if !defined(FUNCONF_USE_DEBUGPRINTF) || !FUNCONF_USE_DEBUGPRINTF
 int _write(int fd, const char *buf, int size) {
 	if(USBFS_SendEndpointNEW(EP_CDC_IN, (uint8_t*)buf, size, /*copy*/1) == -1) { // -1 == busy
@@ -65,16 +74,16 @@ int putchar(int c) {
 	}
 	return 1;
 }
-#endif
-
-void blink(int n) {
-	for(int i = n-1; i >= 0; i--) {
-		funDigitalWrite( LED, FUN_LOW ); // Turn on LED
-		Delay_Ms(33);
-		funDigitalWrite( LED, FUN_HIGH ); // Turn off LED
-		if(i) Delay_Ms(33);
+#else
+void handle_debug_input( int numbytes, uint8_t * data ) {
+	if(numbytes == 1 && data[0] == 'p') {
+		// send first ping on access address from macro
+		blink(1);
+		iSLERTX(ACCESS_ADDRESS_BCST, (uint8_t*)payload, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);
+		iSLERRX(ACCESS_ADDRESS_PRIV, ISLER_CHANNEL, ISLER_PHY_MODE); // listen on private address for response
 	}
 }
+#endif
 
 // -----------------------------------------------------------------------------
 // IN Handler (Called by IRQ when Packet Sent to PC)
@@ -143,10 +152,6 @@ void isler_process_rx() {
 		iSLERTX(uuid, payload, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);
 		iSLERRX(ACCESS_ADDRESS_PRIV, ISLER_CHANNEL, ISLER_PHY_MODE); // listen on private address for response
 	}
-	else if(!len && uuid == 0) {
-		// noise after first TX, where does this come from? Probably best to keep listening on private access address
-		iSLERRX(ACCESS_ADDRESS_PRIV, ISLER_CHANNEL, ISLER_PHY_MODE); // listen on private address for response
-	}
 	else {
 		// we missed a ping so we should start listening on the broadcast channel again.
 		iSLERRX(ACCESS_ADDRESS_BCST, ISLER_CHANNEL, ISLER_PHY_MODE); // continue listening on broadcast address
@@ -170,6 +175,9 @@ int main() {
 	blink(5);
 	uint32_t start = funSysTick32();
 	while(1) {
+#if defined(FUNCONF_USE_DEBUGPRINTF) && FUNCONF_USE_DEBUGPRINTF
+		poll_input();
+#endif
 #ifdef GLOBAL_RX_READY
 		if(rx_ready) {
 			isler_process_rx();
