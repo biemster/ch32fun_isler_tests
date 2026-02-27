@@ -16,6 +16,7 @@ void ISLER_CALLBACK(void); // this should have been in extralibs/iSLER.h
 #define USBFSSetup         USBDSetup
 #define USBFS_SetupReqLen  USBD_SetupReqLen
 #define USBFS_SetupReqType USBD_SetupReqType
+#define USBFS_Endp_Busy    USBD_Endp_Busy
 #define USBFS_PACKET_SIZE  DEF_USBD_UEP0_SIZE
 int USBFS_SendEndpointNEW(int ep, uint8_t *data, int len, int copy) { return USBD_SendEndpoint(ep, data, len); }
 #else
@@ -28,21 +29,27 @@ int USBFS_SendEndpointNEW(int ep, uint8_t *data, int len, int copy) { return USB
 #define EP_BULK_OUT  6
 #define EP_BULK_IN   5
 
-#ifdef CH570_CH572
+#ifdef CH32V20x
+#define LED PC0
+#elif defined(CH570_CH572)
 #define LED PA9
 #else
 #define LED PA8
 #endif
 
 #ifndef ROM_CFG_MAC_ADDR // should be updated in ch5xxhw.h
-#define ROM_CFG_MAC_ADDR        ((const u32*)0x0007f018)
+#ifdef CH5xx
+#define ROM_CFG_MAC_ADDR    ((const u32*)0x0007f018)
+#elif defined(CH32V20x)
+#define ROM_CFG_MAC_ADDR    (&R32_ETH_MAADRL)
+#endif
 #endif
 
 #define PONG_DELAY_MS       8
 #define ACCESS_ADDRESS_BCST 0x63683332
 #define ACCESS_ADDRESS_PRIV (*ROM_CFG_MAC_ADDR)
 #define ISLER_CHANNEL       35
-#define ISLER_PHY_MODE      PHY_2M
+#define ISLER_PHY_MODE      PHY_1M
 __attribute__((aligned(4))) static uint8_t payload[] = "UUUUS[ch32fun iSLER ping pong]";
 static volatile int cnt;
 
@@ -109,11 +116,13 @@ void HandleDataOut(struct _USBState *ctx, int endp, uint8_t *data, int len) {
 		}
 	}
 	else if (endp == EP_BULK_OUT) {
+#ifdef CH5xx
 		if(len == 4 && ((uint32_t*)data)[0] == 0x010001a2) {
 			USBFSReset();
 			blink(2);
 			jump_isprom();
 		}
+#endif
 
 		ctx->USBFS_Endp_Busy[EP_BULK_OUT] = 0;
 	}
@@ -165,7 +174,10 @@ int main() {
 	funGpioInitAll(); // no-op on ch5xx
 	funPinMode( LED, GPIO_CFGLR_OUT_2Mhz_PP );
 
+#ifndef CH32V20x
+	// BUG: currently USBFSSetup interferes with the RF clock on the v208
 	USBFSSetup();
+#endif
 
 	*(uint32_t*)payload = ACCESS_ADDRESS_PRIV;
 	payload[4] = sizeof(payload) -5;

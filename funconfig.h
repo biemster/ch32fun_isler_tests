@@ -8,8 +8,8 @@
 #define CLK_SOURCE_CH5XX          CLK_SOURCE_PLL_60MHz // default so not really needed
 #define FUNCONF_SYSTEM_CORE_CLOCK 60 * 1000 * 1000     // keep in line with CLK_SOURCE_CH5XX
 #else
-#define FUNCONF_SYSTEM_CORE_CLOCK 120 * 1000 * 1000
-#define FUNCONF_PLL_MULTIPLIER    15
+#define FUNCONF_SYSTEM_CORE_CLOCK 144 * 1000 * 1000
+#define FUNCONF_PLL_MULTIPLIER    12
 #define FUNCONF_SYSTICK_USE_HCLK  1
 #endif
 
