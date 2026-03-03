@@ -45,12 +45,11 @@ int USBFS_SendEndpointNEW(int ep, uint8_t *data, int len, int copy) { return USB
 #endif
 #endif
 
-#define PONG_DELAY_MS       8
 #define ACCESS_ADDRESS_BCST 0x63683332
 #define ACCESS_ADDRESS_PRIV (*ROM_CFG_MAC_ADDR)
 #define ISLER_CHANNEL       35
 #define ISLER_PHY_MODE      PHY_1M
-__attribute__((aligned(4))) static uint8_t payload[] = "UUUUS[ch32fun iSLER ping pong]";
+__attribute__((aligned(4))) static uint8_t payload[] = "XSYZUUUU[ch32fun iSLER ping pong]"; // S=payload len, XYZ to align uuid UUUU
 static volatile int cnt;
 
 void blink(int n) {
@@ -118,6 +117,7 @@ void HandleDataOut(struct _USBState *ctx, int endp, uint8_t *data, int len) {
 	else if (endp == EP_BULK_OUT) {
 #ifdef CH5xx
 		if(len == 4 && ((uint32_t*)data)[0] == 0x010001a2) {
+			iSLERStop();
 			USBFSReset();
 			blink(2);
 			jump_isprom();
@@ -153,11 +153,10 @@ int HandleSetupCustom( struct _USBState *ctx, int setup_code ) {
 
 void isler_process_rx() {
 	uint8_t *frame = (uint8_t *)LLE_BUF;
-	uint32_t uuid = *(uint32_t*)frame;
-	uint8_t len = frame[4];
-	if(len == sizeof(payload) -5) {
+	uint32_t uuid = *(uint32_t*)&frame[4];
+	uint8_t len = frame[1];
+	if(len == sizeof(payload) -2) {
 		cnt++;
-		Delay_Ms(PONG_DELAY_MS);
 		iSLERTX(uuid, payload, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);
 		iSLERRX(ACCESS_ADDRESS_PRIV, ISLER_CHANNEL, ISLER_PHY_MODE); // listen on private address for response
 	}
@@ -179,8 +178,8 @@ int main() {
 	USBFSSetup();
 #endif
 
-	*(uint32_t*)payload = ACCESS_ADDRESS_PRIV;
-	payload[4] = sizeof(payload) -5;
+	*(uint32_t*)&payload[4] = ACCESS_ADDRESS_PRIV;
+	payload[1] = sizeof(payload) -2;
 	iSLERInit(LL_TX_POWER_0_DBM);
 	iSLERRX(ACCESS_ADDRESS_BCST, ISLER_CHANNEL, ISLER_PHY_MODE); // start listening on broadcast address
 
