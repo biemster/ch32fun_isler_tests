@@ -61,6 +61,15 @@ void blink(int n) {
 	}
 }
 
+void open_link() {
+	blink(1);
+	gs_iSLERLink.is_open = 0;
+	*(uint32_t*)&payload[4] = ACCESS_ADDRESS_PRIV;
+	iSLERTX(ACCESS_ADDRESS_BCST, (uint8_t*)payload, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);
+	iSLERLinkConfig(ACCESS_ADDRESS_PRIV, ISLER_CHANNEL, ISLER_PHY_MODE, payload);
+	iSLERLinkRX();
+}
+
 #if !defined(FUNCONF_USE_DEBUGPRINTF) || !FUNCONF_USE_DEBUGPRINTF
 int _write(int fd, const char *buf, int size) {
 	if(USBFS_SendEndpointNEW(EP_CDC_IN, (uint8_t*)buf, size, /*copy*/1) == -1) { // -1 == busy
@@ -83,10 +92,7 @@ int putchar(int c) {
 #else
 void handle_debug_input( int numbytes, uint8_t * data ) {
 	if(numbytes == 1 && data[0] == 'p') {
-		// send first ping on access address from macro
-		blink(1);
-		iSLERTX(ACCESS_ADDRESS_BCST, (uint8_t*)payload, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);
-		iSLERRX(ACCESS_ADDRESS_PRIV, ISLER_CHANNEL, ISLER_PHY_MODE); // listen on private address for response
+		open_link();
 	}
 }
 #endif
@@ -108,10 +114,7 @@ void HandleDataOut(struct _USBState *ctx, int endp, uint8_t *data, int len) {
 	else if( endp == EP_CDC_OUT ) {
 		// cdc tty input
 		if(len == 1 && data[0] == 'p') {
-			// send first ping on access address from macro
-			blink(1);
-			iSLERTX(ACCESS_ADDRESS_BCST, (uint8_t*)payload, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);
-			iSLERRX(ACCESS_ADDRESS_PRIV, ISLER_CHANNEL, ISLER_PHY_MODE); // listen on private address for response
+			open_link();
 		}
 	}
 	else if (endp == EP_BULK_OUT) {
@@ -156,12 +159,20 @@ void isler_process_rx() {
 	uint32_t uuid = *(uint32_t*)&frame[4];
 	uint8_t len = frame[1];
 	if(len == sizeof(payload) -2) {
+		// a bit flaky check if it is a ping/pong, but should be good enough
 		cnt++;
-		iSLERTX(uuid, payload, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);
-		iSLERRX(ACCESS_ADDRESS_PRIV, ISLER_CHANNEL, ISLER_PHY_MODE); // listen on private address for response
+		if(gs_iSLERLink.is_open == 0) {
+			*(uint32_t*)&payload[4] = uuid;
+			iSLERLinkConfig(uuid, ISLER_CHANNEL, ISLER_PHY_MODE, payload);
+		}
+		iSLERLinkTX();
+		for( int timeout = Ticks_from_Ms(5); !tx_done && timeout >= 0; timeout-- );
+		iSLERLinkRX();
+	}
+	else if(gs_iSLERLink.is_open) {
+		iSLERLinkRX();
 	}
 	else {
-		// we missed a ping so we should start listening on the broadcast channel again.
 		iSLERRX(ACCESS_ADDRESS_BCST, ISLER_CHANNEL, ISLER_PHY_MODE); // continue listening on broadcast address
 	}
 }
@@ -178,7 +189,6 @@ int main() {
 	USBFSSetup();
 #endif
 
-	*(uint32_t*)&payload[4] = ACCESS_ADDRESS_PRIV;
 	payload[1] = sizeof(payload) -2;
 	iSLERInit(LL_TX_POWER_0_DBM);
 	iSLERRX(ACCESS_ADDRESS_BCST, ISLER_CHANNEL, ISLER_PHY_MODE); // start listening on broadcast address
@@ -195,9 +205,9 @@ int main() {
 			rx_ready = 0;
 		}
 #endif
-		if(cnt && !(cnt %100)) {
+		if(cnt && !(cnt %1000)) {
 			cnt++; // not really a count, but otherwise it get's stuck here. We're just ballparking anyway
-			printf("pingponged 100 times in %ld millis\r\n", (funSysTick32() - start) / Ticks_from_Ms(1));
+			printf("pingponged 1000 times in %ld millis\r\n", (funSysTick32() - start) / Ticks_from_Ms(1));
 			start = funSysTick32();
 		}
 	}
