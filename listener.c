@@ -41,7 +41,7 @@ int USBFS_SendEndpointNEW(int ep, uint8_t *data, int len, int copy) { return USB
 #define ACCESS_ADDRESS 0x63683332
 #define ISLER_CHANNEL  35
 #define ISLER_PHY_MODE PHY_1M
-__attribute__((aligned(4))) static uint8_t payload[] = "UUUUS[ch32fun iSLER ping pong]";
+__attribute__((aligned(4))) static uint8_t payload[] = "XSYZUUUU[ch32fun iSLER ping pong]";
 
 #if !defined(FUNCONF_USE_DEBUGPRINTF) || !FUNCONF_USE_DEBUGPRINTF
 int _write(int fd, const char *buf, int size) {
@@ -129,8 +129,8 @@ int HandleSetupCustom( struct _USBState *ctx, int setup_code ) {
 
 void isler_process_rx() {
 	uint8_t *frame = (uint8_t *)LLE_BUF;
-	if(frame[4] == sizeof(payload) -5) {
-		printf("Received frame from %08lx\n", *(uint32_t*)frame);
+	if(frame[1] == sizeof(payload) -2) {
+		printf("Received frame from %08lx\n", *(uint32_t*)&frame[4]);
 		iSLERRX(ACCESS_ADDRESS, ISLER_CHANNEL, ISLER_PHY_MODE); // continue listening on broadcast address
 	}
 }
@@ -144,8 +144,6 @@ int main() {
 
 	USBFSSetup();
 
-	*(uint32_t*)payload = *ROM_CFG_MAC_ADDR;
-	payload[4] = sizeof(payload) -5;
 	iSLERInit(LL_TX_POWER_0_DBM);
 	iSLERRX(ACCESS_ADDRESS, ISLER_CHANNEL, ISLER_PHY_MODE); // start listening on broadcast address
 

@@ -6,6 +6,7 @@ Current available applications:
 1. listener
 2. blaster
 3. pingpong
+4. timers
 
 The names say it all currently. Build for ch570 (default) and flash using linkE (default) for example:
 ```bash

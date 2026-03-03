@@ -66,7 +66,7 @@ void open_link() {
 	gs_iSLERLink.is_open = 0;
 	*(uint32_t*)&payload[4] = ACCESS_ADDRESS_PRIV;
 	iSLERTX(ACCESS_ADDRESS_BCST, (uint8_t*)payload, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);
-	iSLERLinkConfig(ACCESS_ADDRESS_PRIV, ISLER_CHANNEL, ISLER_PHY_MODE, payload);
+	iSLERLinkConfig(ACCESS_ADDRESS_PRIV, ISLER_CHANNEL, ISLER_PHY_MODE, payload, /*auto_mode*/0);
 	iSLERLinkRX();
 }
 
@@ -163,7 +163,7 @@ void isler_process_rx() {
 		cnt++;
 		if(gs_iSLERLink.is_open == 0) {
 			*(uint32_t*)&payload[4] = uuid;
-			iSLERLinkConfig(uuid, ISLER_CHANNEL, ISLER_PHY_MODE, payload);
+			iSLERLinkConfig(uuid, ISLER_CHANNEL, ISLER_PHY_MODE, payload, /*auto_mode*/0);
 		}
 		iSLERLinkTX();
 		for( int timeout = Ticks_from_Ms(5); !tx_done && timeout >= 0; timeout-- );

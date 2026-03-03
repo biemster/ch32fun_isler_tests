@@ -5,6 +5,10 @@ TARGET_MCU := CH570
 TARGET_MCU_PACKAGE := CH570D
 DEBUGPRINTF := 1
 
+ifneq ($(filter timers,$(MAKECMDGOALS)),)
+    TARGET := timers
+endif
+
 ifneq ($(filter listener,$(MAKECMDGOALS)),)
     TARGET := listener
 endif
@@ -51,7 +55,7 @@ ifneq ($(filter usb,$(MAKECMDGOALS)),)
     DEBUGPRINTF := 0
 endif
 
-CONFIG_TARGETS := usb v208 ch32v208 ch570 ch573 ch582 ch585 ch591 ch592 listener blaster pingpong
+CONFIG_TARGETS := usb v208 ch32v208 ch570 ch573 ch582 ch585 ch591 ch592 timers listener blaster pingpong
 .PHONY: $(CONFIG_TARGETS)
 $(CONFIG_TARGETS):
 	@:
