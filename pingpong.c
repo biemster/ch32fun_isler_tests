@@ -6,6 +6,7 @@
 #ifndef GLOBAL_RX_READY
 #define ISLER_CALLBACK_RX isler_process_rx
 #endif
+// #define ISLER_IDLE_WHILE_TX
 #include "iSLER.h"
 
 #ifdef USB_USE_USBD
@@ -165,11 +166,15 @@ void isler_process_rx() {
 			iSLERLinkConfig(uuid, ISLER_CHANNEL, ISLER_PHY_MODE, payload, /*auto_mode*/0);
 		}
 		iSLERLinkTX();
+#ifdef ISLER_IDLE_WHILE_TX
 		while(!tx_done) {
 			NVIC->SCTLR &= ~(1 << 2); // don't deep sleep
 			NVIC->SCTLR &= ~(1 << 3); // wfi
 			__WFI();
 		}
+#else
+		for( int timeout = Ticks_from_Ms(5); !tx_done && timeout >= 0; timeout-- );
+#endif
 		iSLERLinkRX();
 	}
 	else if(gs_iSLERLink.is_open) {
