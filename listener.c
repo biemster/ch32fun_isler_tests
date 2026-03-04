@@ -4,8 +4,7 @@
 #define GLOBAL_RX_READY // set this to have the rx logic out of the IRQ scope,
 						// needed when iSLERRX/TX is called in the handler
 #ifndef GLOBAL_RX_READY
-#define ISLER_CALLBACK isler_process_rx
-void ISLER_CALLBACK(void); // this should have been in extralibs/iSLER.h
+#define ISLER_CALLBACK_RX isler_process_rx
 #endif
 #include "iSLER.h"
 

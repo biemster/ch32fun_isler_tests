@@ -1,17 +1,12 @@
 #include "ch32fun.h"
 #include <stdio.h>
 
-void tmr0_cb();
-void tmr1_cb();
-void tmr2_cb();
-#define ISLER_TMR0_CALLBACK tmr0_cb
-#define ISLER_TMR1_CALLBACK tmr1_cb
-#define ISLER_TMR2_CALLBACK tmr2_cb
+#define ISLER_CALLBACK_TMR0 tmr0_cb
+#define ISLER_CALLBACK_TMR1 tmr1_cb
+#define ISLER_CALLBACK_TMR2 tmr2_cb
 #if defined(CH570_CH572) || defined(CH584_CH585) || defined(CH591_CH592)
-#define ISLER_TMR3_CALLBACK tmr3_cb
-#define ISLER_TMR4_CALLBACK tmr4_cb
-void tmr3_cb();
-void tmr4_cb();
+#define ISLER_CALLBACK_TMR3 tmr3_cb
+#define ISLER_CALLBACK_TMR4 tmr4_cb
 #endif
 #include "iSLER.h"
 
@@ -157,23 +152,23 @@ int main() {
 #endif
 	iSLERInit(LL_TX_POWER_0_DBM); // we just init the whole thing, we don't know yet which exact bit enable the timers
 
-#if defined(INT_ISLER_TMR0) && defined(ISLER_TMR0_CALLBACK)
+#if defined(INT_ISLER_TMR0) && defined(ISLER_CALLBACK_TMR0)
 	uint32_t int_en = INT_ISLER_TMR0;
 	LL->TMR0 = (1 << 21); // 2M, about one second
 #endif
-#if defined(INT_ISLER_TMR1) && defined(ISLER_TMR1_CALLBACK)
+#if defined(INT_ISLER_TMR1) && defined(ISLER_CALLBACK_TMR1)
 	int_en |= INT_ISLER_TMR1;
 	LL->TMR1 = (1 << 21) + (1 << 19); // 1s + ~250ms
 #endif
-#if defined(INT_ISLER_TMR2) && defined(ISLER_TMR2_CALLBACK)
+#if defined(INT_ISLER_TMR2) && defined(ISLER_CALLBACK_TMR2)
 	int_en |= INT_ISLER_TMR2;
 	LL->TMR2 = (1 << 21) + (1 << 20); // 1s + ~500ms
 #endif
-#if defined(INT_ISLER_TMR3) && defined(ISLER_TMR3_CALLBACK)
+#if defined(INT_ISLER_TMR3) && defined(ISLER_CALLBACK_TMR3)
 	int_en |= INT_ISLER_TMR3;
 	LL->TMR3 = (1 << 21) + (1 << 20) + (1 << 19); // 1s + ~750ms
 #endif
-#if defined(INT_ISLER_TMR4) && defined(ISLER_TMR4_CALLBACK)
+#if defined(INT_ISLER_TMR4) && defined(ISLER_CALLBACK_TMR4)
 	int_en |= INT_ISLER_TMR4;
 	LL->TMR4 = (1 << 21) + (1 << 21); // 2s
 #endif
