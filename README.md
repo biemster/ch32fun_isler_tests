@@ -1,5 +1,5 @@
 # ch32fun_isler_tests
-Experiments with ch32fun iSLER. Requires updated iSLER.h from https://github.com/cnlohr/ch32fun/pull/867.
+Experiments with ch32fun iSLER.
 
 ## playground to test and improve iSLER RF in ch32fun
 Current available applications:

@@ -40,7 +40,7 @@ int USBFS_SendEndpointNEW(int ep, uint8_t *data, int len, int copy) { return USB
 #define ACCESS_ADDRESS 0x63683332
 #define ISLER_CHANNEL  35
 #define ISLER_PHY_MODE PHY_1M
-__attribute__((aligned(4))) static uint8_t payload[] = "XSYZUUUU[ch32fun iSLER ping pong]";
+ISLER_BUF_ATTR uint8_t payload[] = "XSYZUUUU[ch32fun iSLER ping pong]";
 
 #if !defined(FUNCONF_USE_DEBUGPRINTF) || !FUNCONF_USE_DEBUGPRINTF
 int _write(int fd, const char *buf, int size) {

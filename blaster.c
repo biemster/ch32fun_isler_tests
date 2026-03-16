@@ -35,7 +35,9 @@ int USBFS_SendEndpointNEW(int ep, uint8_t *data, int len, int copy) { return USB
 #define ACCESS_ADDRESS 0x63683332
 #define ISLER_CHANNEL  35
 #define ISLER_PHY_MODE PHY_1M
-__attribute__((aligned(4))) static uint8_t payload[] = "XSYZUUUU[ch32fun iSLER ping pong]";
+
+const uint8_t payload[] = "XSYZUUUU[ch32fun iSLER ping pong]";
+ISLER_BUF_ATTR uint8_t islerbuf[sizeof(payload)];
 
 #if !defined(FUNCONF_USE_DEBUGPRINTF) || !FUNCONF_USE_DEBUGPRINTF
 int _write(int fd, const char *buf, int size) {
@@ -68,7 +70,7 @@ void blink(int n) {
 }
 
 void tx() {
-	iSLERTX(ACCESS_ADDRESS, (uint8_t*)payload, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);	
+	iSLERTX(ACCESS_ADDRESS, (uint8_t*)islerbuf, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);
 }
 
 // -----------------------------------------------------------------------------
@@ -134,7 +136,8 @@ int main() {
 
 	USBFSSetup();
 
-	*(uint32_t*)&payload[4] = *ROM_CFG_MAC_ADDR;
+	memcpy(islerbuf, payload, sizeof(payload));
+	*(uint32_t*)&islerbuf[4] = *ROM_CFG_MAC_ADDR;
 	iSLERInit(LL_TX_POWER_0_DBM);
 
 	blink(5);

@@ -49,7 +49,8 @@ int USBFS_SendEndpointNEW(int ep, uint8_t *data, int len, int copy) { return USB
 #define ACCESS_ADDRESS_PRIV (*ROM_CFG_MAC_ADDR)
 #define ISLER_CHANNEL       35
 #define ISLER_PHY_MODE      PHY_1M
-__attribute__((aligned(4))) static uint8_t payload[] = "XSYZUUUU[ch32fun iSLER ping pong]"; // S=payload len, XYZ to align uuid UUUU
+const uint8_t payload[] = "XSYZUUUU[ch32fun iSLER ping pong]"; // S=payload len, XYZ to align uuid UUUU
+ISLER_BUF_ATTR uint8_t islerbuf[sizeof(payload)];
 static volatile int cnt;
 
 void blink(int n) {
@@ -64,9 +65,9 @@ void blink(int n) {
 void open_link() {
 	blink(1);
 	gs_iSLERLink.is_open = 0;
-	*(uint32_t*)&payload[4] = ACCESS_ADDRESS_PRIV;
-	iSLERTX(ACCESS_ADDRESS_BCST, (uint8_t*)payload, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);
-	iSLERLinkConfig(ACCESS_ADDRESS_PRIV, ISLER_CHANNEL, ISLER_PHY_MODE, payload, /*auto_mode*/0);
+	*(uint32_t*)&islerbuf[4] = ACCESS_ADDRESS_PRIV;
+	iSLERTX(ACCESS_ADDRESS_BCST, (uint8_t*)islerbuf, sizeof(payload), ISLER_CHANNEL, ISLER_PHY_MODE);
+	iSLERLinkConfig(ACCESS_ADDRESS_PRIV, ISLER_CHANNEL, ISLER_PHY_MODE, islerbuf, /*auto_mode*/0);
 	iSLERLinkRX();
 }
 
@@ -162,14 +163,13 @@ void isler_process_rx() {
 		// a bit flaky check if it is a ping/pong, but should be good enough
 		cnt++;
 		if(gs_iSLERLink.is_open == 0) {
-			*(uint32_t*)&payload[4] = uuid;
-			iSLERLinkConfig(uuid, ISLER_CHANNEL, ISLER_PHY_MODE, payload, /*auto_mode*/0);
+			*(uint32_t*)&islerbuf[4] = uuid;
+			iSLERLinkConfig(uuid, ISLER_CHANNEL, ISLER_PHY_MODE, islerbuf, /*auto_mode*/0);
 		}
 		iSLERLinkTX();
 #ifdef ISLER_IDLE_WHILE_TX
 		while(!tx_done) {
 			NVIC->SCTLR &= ~(1 << 2); // don't deep sleep
-			NVIC->SCTLR &= ~(1 << 3); // wfi
 			__WFI();
 		}
 #else
@@ -197,7 +197,8 @@ int main() {
 	USBFSSetup();
 #endif
 
-	payload[1] = sizeof(payload) -2;
+	memcpy(islerbuf, payload, sizeof(payload));
+	islerbuf[1] = sizeof(payload) -2;
 	iSLERInit(LL_TX_POWER_0_DBM);
 	iSLERRX(ACCESS_ADDRESS_BCST, ISLER_CHANNEL, ISLER_PHY_MODE); // start listening on broadcast address
 
